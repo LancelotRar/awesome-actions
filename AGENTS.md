@@ -26,6 +26,8 @@ GitHub Actions 工作流集合，用于监控第三方仓库 Release 并通过 T
 
 **权限要求**：`contents: write` — 工作流需要 push data 文件回仓库。
 
+**.gitignore 忽略项**：`__pycache__/`, `*.pyc`, `*.egg-info/`, `dist/`, `build/`, `.venv/`, `Thumbs.db`, `.DS_Store`, `.vscode/`, `.idea/`
+
 ## 关键约束
 
 ### 1. Telethon 版本敏感
