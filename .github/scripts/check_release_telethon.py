@@ -199,12 +199,7 @@ async def notify(release_data: dict, asset_paths: list[str]) -> bool:
     all_ok = True
     try:
         for raw_cid in chat_ids:
-            # Numeric chat ID or @username (strip @ for Telethon)
-            entity: int | str
-            try:
-                entity = int(raw_cid)
-            except ValueError:
-                entity = raw_cid.lstrip("@")
+            entity = int(raw_cid)  # must be numeric, e.g. -1001234567890
 
             try:
                 # Send each asset as an individual message (no caption), then text at the end.
