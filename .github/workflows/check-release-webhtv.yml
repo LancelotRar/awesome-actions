@@ -1,0 +1,63 @@
+name: Check fish2018/webhtv Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Force re-notify even if already notified
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: webhtv-release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      REPO: fish2018/webhtv
+      DATA_FILE: .github/data/last-release-webhtv.txt
+      NOTIFY_TITLE: 鱼佬WebHTV
+      NOTIFY_GROUP_URL: https://t.me/webhtv
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('.github/scripts/requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pip install -r .github/scripts/requirements.txt
+
+      - name: Check and notify
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN_03BOT }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID_WEBHTV }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          FORCE: ${{ inputs.force || '' }}
+        run: python3 .github/scripts/check_release_telethon.py
+
+      - name: Persist release data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ env.DATA_FILE }}"
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "update last release data [skip ci]"
+          git push

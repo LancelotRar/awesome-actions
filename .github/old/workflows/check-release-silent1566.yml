@@ -1,0 +1,47 @@
+name: Check Silent1566/webhtv Release
+
+on:
+  schedule:
+    - cron: '17 16 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Force re-notify even if already notified
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: webhtv-silent1566-release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      REPO: Silent1566/webhtv
+      DATA_FILE: .github/data/last-release-silent1566.txt
+      NOTIFY_TITLE: 不懂佬WebHTV
+      NOTIFY_GROUP_URL: https://t.me/Silent1566Group
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check and notify
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN_SILENT }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID_SILENT }}
+          FORCE: ${{ inputs.force || '' }}
+        run: python3 .github/scripts/check_release.py
+
+      - name: Persist release data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ env.DATA_FILE }}"
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "update last release data [skip ci]"
+          git push

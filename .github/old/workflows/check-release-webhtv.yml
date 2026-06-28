@@ -1,0 +1,47 @@
+name: Check fish2018/webhtv Release
+
+on:
+  schedule:
+    - cron: '47 16 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Force re-notify even if already notified
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: webhtv-release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      REPO: fish2018/webhtv
+      DATA_FILE: .github/data/last-release-webhtv.txt
+      NOTIFY_TITLE: 鱼佬WebHTV
+      NOTIFY_GROUP_URL: https://t.me/webhtv
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check and notify
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN_WEBHTV }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID_WEBHTV }}
+          FORCE: ${{ inputs.force || '' }}
+        run: python3 .github/scripts/check_release.py
+
+      - name: Persist release data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ env.DATA_FILE }}"
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "update last release data [skip ci]"
+          git push
