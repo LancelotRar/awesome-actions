@@ -14,3 +14,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Repo instructions (not committed)
+AGENTS.md
