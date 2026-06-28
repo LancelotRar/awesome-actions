@@ -172,11 +172,11 @@ async def notify(release_data: dict, asset_paths: list[str]) -> bool:
     rel_url = release_data["html_url"]
 
     text = (
-        f"🚀<b>{NOTIFY_TITLE} 新版本发布！</b>\n"
+        f"🚀<b>{NOTIFY_TITLE}新版本发布！</b>\n"
         f'📢<a href="{NOTIFY_GROUP_URL}">TG讨论群</a>\n'
         f"🌀<b>版本：</b><code>{rel_name}</code>\n"
         f"🍾<b>发布时间：</b>{pub_date}\n"
-        f'🔗<a href="{rel_url}">查看完整 Release 日志</a>'
+        f'🔗<a href="{rel_url}">查看完整Release日志</a>'
     )
 
     # --- Telethon client ---
