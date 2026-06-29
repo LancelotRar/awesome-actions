@@ -195,8 +195,21 @@ async def notify(release_data: dict) -> bool:
             try:
                 resp = await asyncio.to_thread(lambda: urllib.request.urlopen(req, timeout=3600))
                 data = await asyncio.to_thread(resp.read)
+
+                last_pct = [0]
+
+                def _progress(sent: int, total: int) -> None:
+                    pct = sent * 100 // total
+                    if pct - last_pct[0] < 10 and sent != total:
+                        return
+                    last_pct[0] = pct
+                    sent_mb = sent / 1_048_576
+                    total_mb = total / 1_048_576
+                    print(f"  Upload: {sent_mb:.1f}/{total_mb:.1f} MB ({pct}%)", flush=True)
+
                 uploaded = await client.upload_file(
-                    io.BytesIO(data), file_name=name, file_size=size, part_size_kb=1024,
+                    io.BytesIO(data), file_name=name, file_size=size,
+                    part_size_kb=1024, progress_callback=_progress,
                 )
                 print(f"Uploaded  {name}", flush=True)
                 return uploaded, [DocumentAttributeFilename(name)]
