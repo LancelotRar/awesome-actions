@@ -85,10 +85,10 @@ def get_apk_assets(release_data: dict) -> list[dict]:
 def stream_asset(asset: dict, token: str = ""):
     """Open an HTTP connection to *asset*'s download URL.
 
-    Returns ``(response, size)`` where *response* is an
-    ``http.client.HTTPResponse`` (a file-like object).
-    Raise on failure.
+    Returns an ``http.client.HTTPResponse`` (file-like object).
+    The caller is responsible for an overall timeout (e.g. via
+    ``asyncio.wait_for``).
     """
     url = asset["browser_download_url"]
     req = urllib.request.Request(url, headers=_build_download_headers(token))
-    return urllib.request.urlopen(req, timeout=3600)
+    return urllib.request.urlopen(req)  # noqa: S310 — caller wraps in wait_for
