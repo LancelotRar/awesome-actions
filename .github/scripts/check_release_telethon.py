@@ -209,7 +209,7 @@ async def notify(release_data: dict) -> bool:
 
                 uploaded = await client.upload_file(
                     io.BytesIO(data), file_name=name, file_size=size,
-                    part_size_kb=1024, progress_callback=_progress,
+                    progress_callback=_progress,
                 )
                 print(f"Uploaded  {name}", flush=True)
                 return uploaded, [DocumentAttributeFilename(name)]
