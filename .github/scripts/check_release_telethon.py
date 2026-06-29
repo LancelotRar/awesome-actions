@@ -193,7 +193,7 @@ async def notify(release_data: dict) -> bool:
                 req.headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
 
             try:
-                resp = await asyncio.to_thread(urllib.request.urlopen, req)
+                resp = await asyncio.to_thread(lambda: urllib.request.urlopen(req, timeout=3600))
                 data = await asyncio.to_thread(resp.read)
                 uploaded = await client.upload_file(
                     io.BytesIO(data), file_name=name, file_size=size, part_size_kb=1024,
