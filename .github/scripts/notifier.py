@@ -133,10 +133,13 @@ async def notify(release_data: dict, cfg: TelegramConfig,
     # -------------------------------------------------------------------
 
     if not uploaded_medias:
-        reason = "No APK assets in release" if not apk_assets else "All assets failed to process"
-        print(f"{reason} — nothing to send")
+        if not apk_assets:
+            print("No APK assets in release — nothing to send")
+            await client.disconnect()  # type: ignore[misc]
+            return True
+        print("::error::All assets failed to process — will retry on next run")
         await client.disconnect()  # type: ignore[misc]
-        return True
+        return False
 
     try:
         for raw_cid in cfg.chat_ids:
