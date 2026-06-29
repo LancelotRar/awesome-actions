@@ -6,7 +6,6 @@ import asyncio
 import io
 from dataclasses import dataclass, field
 from html import escape
-from pathlib import Path
 
 from telethon import TelegramClient, errors as tg_errors
 from telethon.sessions import StringSession
@@ -81,7 +80,6 @@ async def notify(release_data: dict, cfg: TelegramConfig,
     apk_assets = get_apk_assets(release_data)
     uploaded_medias: list | None = None
     file_attrs: list | None = None
-    upload_ok = False
 
     if apk_assets:
         print(f"Fetching & uploading {len(apk_assets)} APK assets …", flush=True)
@@ -127,29 +125,31 @@ async def notify(release_data: dict, cfg: TelegramConfig,
             if medias:
                 uploaded_medias = medias
                 file_attrs = attrs
-                upload_ok = True
                 print("All assets ready, sending as album …", flush=True)
         except asyncio.TimeoutError:
             print("::error::Asset processing timeout — skipped", flush=True)
-            all_ok = False
+            await client.disconnect()  # type: ignore[misc]
+            return False
     # -------------------------------------------------------------------
+
+    if not uploaded_medias:
+        reason = "No APK assets in release" if not apk_assets else "All assets failed to process"
+        print(f"{reason} — nothing to send")
+        await client.disconnect()  # type: ignore[misc]
+        return True
 
     try:
         for raw_cid in cfg.chat_ids:
             try:
-                if upload_ok and uploaded_medias:
-                    caption_list = [""] * (len(uploaded_medias) - 1) + [text]
-                    await client.send_file(
-                        raw_cid, list(uploaded_medias),
-                        caption=caption_list,
-                        parse_mode="html",
-                        force_document=True,
-                        attributes=file_attrs or [],
-                    )
-                    print(f"Album sent to  {raw_cid}", flush=True)
-                else:
-                    await client.send_message(raw_cid, text, parse_mode="html")
-                    print(f"Notification sent to  {raw_cid} (no assets)", flush=True)
+                caption_list = [""] * (len(uploaded_medias) - 1) + [text]
+                await client.send_file(
+                    raw_cid, list(uploaded_medias),
+                    caption=caption_list,
+                    parse_mode="html",
+                    force_document=True,
+                    attributes=file_attrs or [],
+                )
+                print(f"Album sent to  {raw_cid}", flush=True)
 
             except tg_errors.FloodWaitError as e:
                 print(
