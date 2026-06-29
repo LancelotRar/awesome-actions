@@ -197,52 +197,57 @@ async def notify(release_data: dict, asset_paths: list[str]) -> bool:
         raise RuntimeError(f"Telegram auth failed — check TG_API_ID / TG_API_HASH / TG_BOT_TOKEN: {e}")
     print("Telethon client started")
     all_ok = True
+
+    # --- Upload assets once (shared across all chats) ---
+    valid_paths = [ap for ap in asset_paths if Path(ap).stat().st_size > 0]
+    uploaded_medias: list | None = None
+    file_attrs: list | None = None
+    upload_ok = False
+
+    if valid_paths:
+        print(f"Uploading {len(valid_paths)} assets in parallel …", flush=True)
+        try:
+
+            def progress_callback(sent: int, total: int) -> None:
+                pct = sent * 100 // total
+                sent_mb = sent / 1_048_576
+                total_mb = total / 1_048_576
+                print(f"  Upload progress: {sent_mb:.1f}/{total_mb:.1f} MB ({pct}%)", flush=True)
+
+            uploaded_medias = await asyncio.wait_for(
+                asyncio.gather(
+                    *[client.upload_file(p, progress_callback=progress_callback) for p in valid_paths]
+                ),
+                timeout=3600,
+            )
+            print("All assets uploaded, sending as album …", flush=True)
+            file_attrs = []
+            for path in valid_paths:
+                attrs, _ = utils.get_attributes(path, force_document=True)
+                file_attrs.append(attrs)
+            upload_ok = True
+        except asyncio.TimeoutError:
+            print(f"::error::Upload timeout for assets — skipped", flush=True)
+            all_ok = False
+    # -------------------------------------------------------------------
+
     try:
         for raw_cid in chat_ids:
             entity = int(raw_cid)  # must be numeric, e.g. -1001234567890
 
             try:
-                # Send each asset as an individual message (no caption), then text at the end.
-                # This avoids Telegram's forced filename labels in document media groups.
-                valid_paths = [ap for ap in asset_paths if Path(ap).stat().st_size > 0]
-                if valid_paths:
-                    print(f"Uploading {len(valid_paths)} assets in parallel …", flush=True)
-                    try:
-                        # Step 1: Upload all files concurrently to Telegram CDN
-                        def progress_callback(sent: int, total: int) -> None:
-                            pct = sent * 100 // total
-                            sent_mb = sent / 1_048_576
-                            total_mb = total / 1_048_576
-                            print(f"  Upload progress: {sent_mb:.1f}/{total_mb:.1f} MB ({pct}%)", flush=True)
-
-                        uploaded = await asyncio.wait_for(
-                            asyncio.gather(
-                                *[client.upload_file(p, progress_callback=progress_callback) for p in valid_paths]
-                            ),
-                            timeout=3600,
-                        )
-                        print("All assets uploaded, sending as album …", flush=True)
-                        # Collect per-file attributes so filenames are preserved.
-                        file_attrs = []
-                        for path in valid_paths:
-                            attrs, _ = utils.get_attributes(path, force_document=True)
-                            file_attrs.append(attrs)
-                        # Single send_file with all files as a list; pass caption as a per-file
-                        # list with only the last entry having text so it appears at the end.
-                        caption_list: list[str] = [""] * (len(valid_paths) - 1) + [text]
-                        await client.send_file(
-                            entity, list(uploaded),
-                            caption=caption_list,
-                            parse_mode="html",
-                            force_document=True,
-                            attributes=file_attrs,
-                        )
-                        print(f"Album sent to  {raw_cid}", flush=True)
-                    except asyncio.TimeoutError:
-                        print(f"::error::Upload timeout for assets — skipped", flush=True)
-                        all_ok = False
+                if upload_ok and uploaded_medias:
+                    caption_list: list[str] = [""] * (len(valid_paths) - 1) + [text]
+                    await client.send_file(
+                        entity, list(uploaded_medias),
+                        caption=caption_list,
+                        parse_mode="html",
+                        force_document=True,
+                        attributes=file_attrs or [],
+                    )
+                    print(f"Album sent to  {raw_cid}", flush=True)
                 else:
-                    # No valid assets — plain text message
+                    # No assets or upload failed — plain text message
                     await client.send_message(entity, text, parse_mode="html")
                     print(f"Notification sent to  {raw_cid} (no assets)", flush=True)
 
