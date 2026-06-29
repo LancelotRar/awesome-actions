@@ -41,7 +41,7 @@ def fetch_latest_release(repo: str, token: str = "") -> dict | None:
     releases: list[dict] = []
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=300) as resp:
                 releases = json.loads(resp.read())
         except urllib.error.HTTPError as e:
             if e.code >= 500 and attempt < _MAX_ATTEMPTS:
