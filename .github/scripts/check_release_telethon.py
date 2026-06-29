@@ -18,19 +18,19 @@ Environment variables:
 """
 
 import asyncio
+import io
 import json
 import os
 import sys
-import tempfile
 import time
 import urllib.error
 import urllib.request
 
 from html import escape
-from pathlib import Path
 
-from telethon import TelegramClient, errors as tg_errors, utils
+from telethon import TelegramClient, errors as tg_errors
 from telethon.sessions import StringSession
+from telethon.tl.types import DocumentAttributeFilename
 
 # ---------------------------------------------------------------------------
 # Config
@@ -112,44 +112,15 @@ def fetch_latest_release() -> dict:
     return releases[0]
 
 
-def download_assets(release_data: dict, dest_dir: str) -> list[str]:
-    """Download .apk release assets into *dest_dir*.  Returns list of local paths."""
+def get_apk_assets(release_data: dict) -> list[dict]:
+    """Filter and return APK assets from release data."""
     assets = release_data.get("assets", [])
-    apk_assets = [a for a in assets if a["name"].endswith(".apk")]
+    apk_assets = [a for a in assets if a["name"].endswith(".apk") and a["size"] > 0]
     if not apk_assets:
-        print("No APK assets to download")
-        return []
-    if len(apk_assets) < len(assets):
+        print("No APK assets available")
+    elif len(apk_assets) < len(assets):
         print(f"Filtered to {len(apk_assets)} APK files (skipped {len(assets) - len(apk_assets)} non-APK)")
-
-    paths: list[str] = []
-    for a in apk_assets:
-        url = a["browser_download_url"]
-        name = a["name"]
-        local_path = Path(dest_dir) / name
-        size_mb = round(a["size"] / 1_048_576, 1)
-
-        print(f"Downloading  {name}  ({size_mb} MB) …", flush=True)
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "GitHub-Actions",
-                "Accept": "application/octet-stream",
-            },
-        )
-        if GITHUB_TOKEN:
-            req.headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
-
-        try:
-            with urllib.request.urlopen(req, timeout=3600) as resp:
-                with open(local_path, "wb") as f:
-                    f.write(resp.read())
-            print(f"Downloaded  {name}  → {local_path}", flush=True)
-            paths.append(str(local_path))
-        except Exception as e:
-            print(f"::warning::Failed to download asset {name}: {e}")
-
-    return paths
+    return apk_assets
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +128,7 @@ def download_assets(release_data: dict, dest_dir: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-async def notify(release_data: dict, asset_paths: list[str]) -> bool:
+async def notify(release_data: dict) -> bool:
     """Send HTML notification message + asset files to every chat in TG_CHAT_ID.
 
     Returns True if all chats were notified successfully, False otherwise.
@@ -199,35 +170,54 @@ async def notify(release_data: dict, asset_paths: list[str]) -> bool:
     all_ok = True
 
     # --- Upload assets once (shared across all chats) ---
-    valid_paths = [ap for ap in asset_paths if Path(ap).stat().st_size > 0]
+    apk_assets = get_apk_assets(release_data)
     uploaded_medias: list | None = None
     file_attrs: list | None = None
     upload_ok = False
 
-    if valid_paths:
-        print(f"Uploading {len(valid_paths)} assets in parallel …", flush=True)
+    if apk_assets:
+        print(f"Fetching & uploading {len(apk_assets)} APK assets …", flush=True)
+
+        async def _fetch_and_upload(asset: dict):
+            url = asset["browser_download_url"]
+            name = asset["name"]
+            size = asset["size"]
+            size_mb = round(size / 1_048_576, 1)
+
+            print(f"Fetching  {name}  ({size_mb} MB) …", flush=True)
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "GitHub-Actions", "Accept": "application/octet-stream"},
+            )
+            if GITHUB_TOKEN:
+                req.headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+
+            try:
+                resp = await asyncio.to_thread(urllib.request.urlopen, req)
+                data = await asyncio.to_thread(resp.read)
+                uploaded = await client.upload_file(
+                    io.BytesIO(data), file_name=name, file_size=size, part_size_kb=1024,
+                )
+                print(f"Uploaded  {name}", flush=True)
+                return uploaded, [DocumentAttributeFilename(name)]
+            except Exception as e:
+                print(f"::warning::Failed to process {name}: {e}")
+                return None, None
+
         try:
-
-            def progress_callback(sent: int, total: int) -> None:
-                pct = sent * 100 // total
-                sent_mb = sent / 1_048_576
-                total_mb = total / 1_048_576
-                print(f"  Upload progress: {sent_mb:.1f}/{total_mb:.1f} MB ({pct}%)", flush=True)
-
-            uploaded_medias = await asyncio.wait_for(
-                asyncio.gather(
-                    *[client.upload_file(p, progress_callback=progress_callback) for p in valid_paths]
-                ),
+            results = await asyncio.wait_for(
+                asyncio.gather(*[_fetch_and_upload(a) for a in apk_assets]),
                 timeout=3600,
             )
-            print("All assets uploaded, sending as album …", flush=True)
-            file_attrs = []
-            for path in valid_paths:
-                attrs, _ = utils.get_attributes(path, force_document=True)
-                file_attrs.append(attrs)
-            upload_ok = True
+            medias = [r[0] for r in results if r[0] is not None]
+            attrs = [r[1] for r in results if r[1] is not None]
+            if medias:
+                uploaded_medias = medias
+                file_attrs = attrs
+                upload_ok = True
+                print("All assets ready, sending as album …", flush=True)
         except asyncio.TimeoutError:
-            print(f"::error::Upload timeout for assets — skipped", flush=True)
+            print(f"::error::Asset processing timeout — skipped", flush=True)
             all_ok = False
     # -------------------------------------------------------------------
 
@@ -237,7 +227,7 @@ async def notify(release_data: dict, asset_paths: list[str]) -> bool:
 
             try:
                 if upload_ok and uploaded_medias:
-                    caption_list: list[str] = [""] * (len(valid_paths) - 1) + [text]
+                    caption_list: list[str] = [""] * (len(uploaded_medias) - 1) + [text]
                     await client.send_file(
                         entity, list(uploaded_medias),
                         caption=caption_list,
@@ -301,13 +291,11 @@ async def main() -> None:
 
         print("New release found, proceeding …")
 
-        # Download assets to tmpdir, then notify
-        with tempfile.TemporaryDirectory(prefix="gh_assets_") as tmpdir:
-            asset_paths = download_assets(release_data, tmpdir)
-            ok = await notify(release_data, asset_paths)
-            if not ok:
-                print("::error::Notification failed — will retry on next run")
-                sys.exit(1)
+        # Stream assets from GitHub → Telegram CDN → all chats
+        ok = await notify(release_data)
+        if not ok:
+            print("::error::Notification failed — will retry on next run")
+            sys.exit(1)
 
         with open(DATA_FILE, "w") as f:
             f.write(latest_updated + "\n")
