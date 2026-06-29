@@ -134,7 +134,16 @@ async def notify(release_data: dict, cfg: TelegramConfig,
 
     if not uploaded_medias:
         if not apk_assets:
-            print("No APK assets in release — nothing to send")
+            print("No APK assets in release — sending text notification")
+            for raw_cid in cfg.chat_ids:
+                try:
+                    await client.send_message(raw_cid, text, parse_mode="html")
+                    print(f"Text notification sent to  {raw_cid}", flush=True)
+                except tg_errors.FloodWaitError as e:
+                    print(f"::error::Flood wait {e.seconds}s on {raw_cid} — skipped")
+                    break
+                except Exception as e:
+                    print(f"::error::Failed to notify {raw_cid}: {e}")
             await client.disconnect()  # type: ignore[misc]
             return True
         print("::error::All assets failed to process — will retry on next run")
