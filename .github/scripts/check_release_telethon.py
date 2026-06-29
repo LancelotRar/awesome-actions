@@ -26,9 +26,9 @@ import asyncio
 import os
 import sys
 
-from storage import read_last_updated, write_last_updated
-from github_client import fetch_latest_release
-from telegram_client import notify, TelegramConfig
+from persist import read_last_updated, write_last_updated
+from github_api import fetch_latest_release
+from notifier import notify, TelegramConfig
 
 # ---------------------------------------------------------------------------
 # Config (read from environment)

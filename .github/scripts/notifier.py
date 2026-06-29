@@ -12,7 +12,7 @@ from telethon import TelegramClient, errors as tg_errors
 from telethon.sessions import StringSession
 from telethon.tl.types import DocumentAttributeFilename
 
-from github_client import get_apk_assets, stream_asset
+from github_api import get_apk_assets, stream_asset
 
 
 @dataclass
