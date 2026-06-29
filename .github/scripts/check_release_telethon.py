@@ -209,11 +209,16 @@ async def notify(release_data: dict, asset_paths: list[str]) -> bool:
                     print(f"Uploading {len(valid_paths)} assets in parallel …", flush=True)
                     try:
                         # Step 1: Upload all files concurrently to Telegram CDN
+                        last_reported_pct = [0]  # mutable cell for closure
+
                         def progress_callback(sent: int, total: int) -> None:
                             pct = sent * 100 // total
+                            if pct - last_reported_pct[0] < 10 and sent != total:
+                                return
+                            last_reported_pct[0] = pct
                             sent_mb = sent / 1_048_576
                             total_mb = total / 1_048_576
-                            print(f"  Upload progress: {sent_mb:.1f}/{total_mb:.1f} MB ({pct}%)", flush=True)
+                            print(f"  Upload: {sent_mb:.1f}/{total_mb:.1f} MB ({pct}%)", flush=True)
 
                         uploaded = await asyncio.wait_for(
                             asyncio.gather(
