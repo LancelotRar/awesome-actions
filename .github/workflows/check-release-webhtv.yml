@@ -26,6 +26,7 @@ jobs:
       DATA_FILE: .github/data/last-release-webhtv.txt
       NOTIFY_TITLE: 鱼大WebHomeTV
       NOTIFY_GROUP_URL: https://t.me/webhtv
+      ASSET_INCLUDE: .apk
     steps:
       - uses: actions/checkout@v6
 

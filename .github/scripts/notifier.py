@@ -1,4 +1,4 @@
-"""Telegram notification via Telethon — send release alerts with APK assets."""
+"""Telegram notification via Telethon — send release alerts with file assets."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from telethon import TelegramClient, errors as tg_errors
 from telethon.sessions import StringSession
 from telethon.tl.types import DocumentAttributeFilename
 
-from github_api import get_apk_assets, stream_asset
+from github_api import get_matching_assets, stream_asset
 
 
 @dataclass
@@ -40,8 +40,10 @@ def _build_message(asset_name: str, pub_date: str, html_url: str,
 
 
 async def notify(release_data: dict, cfg: TelegramConfig,
-                 github_token: str = "") -> bool:
-    """Send a release notification (with APK assets) to every chat in *cfg*.
+                 github_token: str = "",
+                 include_filter: str = "",
+                 exclude_filter: str = "") -> bool:
+    """Send a release notification (with matching assets) to every chat.
 
     Files are streamed from GitHub straight to Telegram CDN (no local
     disk write).  The upload is performed **once** and the same
@@ -77,12 +79,13 @@ async def notify(release_data: dict, cfg: TelegramConfig,
     all_ok = True
 
     # --- Upload assets once (shared across all chats) ---
-    apk_assets = get_apk_assets(release_data)
+    matched_assets = get_matching_assets(release_data,
+                                         include_filter, exclude_filter)
     uploaded_medias: list | None = None
     file_attrs: list | None = None
 
-    if apk_assets:
-        print(f"Fetching & uploading {len(apk_assets)} APK assets …", flush=True)
+    if matched_assets:
+        print(f"Fetching & uploading {len(matched_assets)} asset(s) …", flush=True)
 
         async def _fetch_and_upload(asset: dict):
             name = asset["name"]
@@ -117,7 +120,7 @@ async def notify(release_data: dict, cfg: TelegramConfig,
 
         try:
             results = await asyncio.wait_for(
-                asyncio.gather(*[_fetch_and_upload(a) for a in apk_assets]),
+                asyncio.gather(*[_fetch_and_upload(a) for a in matched_assets]),
                 timeout=3600,
             )
             medias = [r[0] for r in results if r[0] is not None]
@@ -133,8 +136,8 @@ async def notify(release_data: dict, cfg: TelegramConfig,
     # -------------------------------------------------------------------
 
     if not uploaded_medias:
-        if not apk_assets:
-            print("No APK assets in release — sending text notification")
+        if not matched_assets:
+            print("No matching assets — sending text notification")
             for raw_cid in cfg.chat_ids:
                 try:
                     await client.send_message(raw_cid, text, parse_mode="html")

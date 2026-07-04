@@ -1,4 +1,4 @@
-"""GitHub API client — fetch releases and filter APK assets."""
+"""GitHub API client — fetch releases and filter assets."""
 
 import json
 import time
@@ -67,19 +67,100 @@ def fetch_latest_release(repo: str, token: str = "") -> dict | None:
     return releases[0]
 
 
-def get_apk_assets(release_data: dict) -> list[dict]:
-    """Filter APK assets (non-empty) from *release_data*.
+def _parse_filter(filter_str: str) -> list[list[tuple[str, str]]]:
+    """Parse a filter string into a list of AND-groups (OR'd together).
 
-    Only assets whose *name* ends with ``.apk`` and whose *size* is
-    greater than zero are returned.
+    Comma separates OR groups; ``+`` within a group means AND.
+    A token starting with ``.`` is a suffix match, otherwise a
+    case-insensitive substring match.
+    """
+    if not filter_str:
+        return []
+
+    or_groups: list[list[tuple[str, str]]] = []
+    for part in filter_str.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        and_tokens: list[tuple[str, str]] = []
+        for token in part.split("+"):
+            token = token.strip()
+            if not token:
+                continue
+            if token.startswith("."):
+                and_tokens.append(("suffix", token.lower()))
+            else:
+                and_tokens.append(("substr", token.lower()))
+        if and_tokens:
+            or_groups.append(and_tokens)
+    return or_groups
+
+
+def _asset_matches(name: str, include_rules: list[list[tuple[str, str]]],
+                   exclude_rules: list[list[tuple[str, str]]]) -> bool:
+    """Return ``True`` if *name* passes include/exclude rules."""
+
+    def _match_and_group(group: list[tuple[str, str]]) -> bool:
+        n = name.lower()
+        return all(
+            n.endswith(token) if kind == "suffix" else token in n
+            for kind, token in group
+        )
+
+    # Include: if rules exist, asset must match at least one OR-group.
+    if include_rules and not any(_match_and_group(g) for g in include_rules):
+        return False
+
+    # Exclude: if any OR-group matches, asset is rejected.
+    if exclude_rules and any(_match_and_group(g) for g in exclude_rules):
+        return False
+
+    return True
+
+
+def get_matching_assets(release_data: dict,
+                        include_filter: str = "",
+                        exclude_filter: str = "") -> list[dict]:
+    """Filter release assets by include/exclude rules.
+
+    Parameters
+    ----------
+    release_data
+        The release dict from GitHub API.
+    include_filter
+        Comma-separated OR groups (``+`` = AND).
+        Empty means every asset is eligible.
+    exclude_filter
+        Same syntax; assets matching any exclude rule are dropped.
+
+    Returns assets whose *size* > 0 and that pass the filters.
     """
     assets = release_data.get("assets", [])
-    apk_assets = [a for a in assets if a["name"].endswith(".apk") and a["size"] > 0]
-    if not apk_assets:
-        print("No APK assets available")
-    elif len(apk_assets) < len(assets):
-        print(f"Filtered to {len(apk_assets)} APK files (skipped {len(assets) - len(apk_assets)} non-APK)")
-    return apk_assets
+    if not assets:
+        return []
+
+    include_rules = _parse_filter(include_filter)
+    exclude_rules = _parse_filter(exclude_filter)
+
+    matched = [a for a in assets
+               if a["size"] > 0 and _asset_matches(a["name"], include_rules, exclude_rules)]
+
+    # -- logging --
+    if include_filter or exclude_filter:
+        out = len(matched)
+        total = len(assets)
+        skipped = total - out
+        bits = []
+        if include_filter:
+            bits.append(f"inc=[{include_filter}]")
+        if exclude_filter:
+            bits.append(f"exc=[{exclude_filter}]")
+        print(f"Asset filter: {' '.join(bits)} -> {out}/{total} matched"
+              + (f" (skipped {skipped})" if skipped else ""))
+    else:
+        print(f"No filter — including all {len(assets)} assets")
+
+    return matched
 
 
 def stream_asset(asset: dict, token: str = ""):

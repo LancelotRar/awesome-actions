@@ -14,6 +14,9 @@ TG_CHAT_ID            Target chat ID(s), comma-separated (numeric only)
 TG_API_ID             Telegram API ID
 TG_API_HASH           Telegram API hash
 FORCE                 "true" to re-notify even if already notified (optional)
+ASSET_INCLUDE         Include filter: comma=OR, plus=AND (e.g. ".apk,.exe+bettbox")
+                      Empty = include all assets (optional)
+ASSET_EXCLUDE         Exclude filter (same syntax, takes priority) (optional)
 
 Design
 ------
@@ -40,6 +43,8 @@ NOTIFY_TITLE = os.environ["NOTIFY_TITLE"]
 NOTIFY_GROUP_URL = os.environ["NOTIFY_GROUP_URL"]
 FORCE = os.environ.get("FORCE", "").lower() == "true"
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+ASSET_INCLUDE = os.environ.get("ASSET_INCLUDE", "")
+ASSET_EXCLUDE = os.environ.get("ASSET_EXCLUDE", "")
 
 for var in ("TG_BOT_TOKEN", "TG_CHAT_ID", "TG_API_ID", "TG_API_HASH"):
     if not os.environ.get(var):
@@ -96,7 +101,8 @@ async def main() -> None:
 
         print("New release found, proceeding …")
 
-        ok = await notify(release, TG_CONFIG, GITHUB_TOKEN)
+        ok = await notify(release, TG_CONFIG, GITHUB_TOKEN,
+                              ASSET_INCLUDE, ASSET_EXCLUDE)
         if not ok:
             print("::error::Notification failed — will retry on next run")
             sys.exit(1)
