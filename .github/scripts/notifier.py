@@ -33,8 +33,8 @@ def _build_message(asset_name: str, pub_date: str, html_url: str,
     return (
         f"🚀<b>{title}新版本发布！</b>\n"
         f'📢<a href="{group_url}">TG讨论群</a>\n'
-        f"🌀<b>版本：</b><code>{name}</code>\n"
-        f"🍾<b>发布时间：</b>{pub_date}\n"
+        f"🌀版本：<code>{name}</code>\n"
+        f"🍾发布时间：{pub_date}\n"
         f'🔗<a href="{html_url}">查看完整Release日志</a>'
     )
 
