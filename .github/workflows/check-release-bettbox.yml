@@ -2,7 +2,7 @@ name: Check appshubcc/Bettbox Release
 
 on:
   schedule:
-    - cron: '30 16 * * *'
+    - cron: '40 16 * * *'
   workflow_dispatch:
     inputs:
       force:
