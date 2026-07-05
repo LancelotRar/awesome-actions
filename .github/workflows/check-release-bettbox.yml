@@ -29,7 +29,7 @@ jobs:
       ASSET_INCLUDE: .apk+arm64-v8a, .dmg+amd64, .exe+amd64
       ASSET_EXCLUDE: linux, compatible
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6

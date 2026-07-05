@@ -28,7 +28,7 @@ jobs:
       NOTIFY_GROUP_URL: https://t.me/webhtv
       ASSET_INCLUDE: .apk
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v6
