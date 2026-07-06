@@ -25,7 +25,7 @@ jobs:
       REPO: fish2018/webhtv
       DATA_FILE: .github/data/last-release-webhtv.txt
       NOTIFY_TITLE: 鱼大WebHomeTV
-      NOTIFY_DESCRIPTION: 鱼大最新版WebHomeTV APK更新
+      NOTIFY_DESCRIPTION: 影视二开，面向未来
       NOTIFY_GROUP_URL: https://t.me/webhtv
       ASSET_INCLUDE: .apk
     steps:
