@@ -24,7 +24,7 @@ jobs:
     env:
       REPO: appshubcc/Bettbox
       DATA_FILE: .github/data/last-release-bettbox.txt
-      NOTIFY_TITLE: Bettbox
+      NOTIFY_TITLE: Bettbox新版本发布！
       NOTIFY_DESCRIPTION: 优秀的mihomo内核全平台代理工具
       NOTIFY_GROUP_URL: https://t.me/appshub_chat
       ASSET_INCLUDE: .apk+arm64-v8a, .dmg+amd64, .exe+amd64

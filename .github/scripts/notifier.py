@@ -34,7 +34,7 @@ def _build_message(asset_name: str, pub_date: str, html_url: str,
     name = escape(asset_name)
     desc_line = f"📝{escape(description)}\n" if description else ""
     return (
-        f"🚀<b>{title}新版本发布！</b>\n"
+        f"🚀<b>{title}</b>\n"
         f"{desc_line}"
         f'📢<a href="{group_url}">TG讨论群</a>\n'
         f"🌀版本：<code>{name}</code>\n"

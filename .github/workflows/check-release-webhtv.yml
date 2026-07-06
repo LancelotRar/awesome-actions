@@ -24,7 +24,7 @@ jobs:
     env:
       REPO: fish2018/webhtv
       DATA_FILE: .github/data/last-release-webhtv.txt
-      NOTIFY_TITLE: 鱼大WebHomeTV
+      NOTIFY_TITLE: 鱼大WebHomeTV新版本发布！
       NOTIFY_DESCRIPTION: 基于FongMi/CatVod生态二次开发的Android影音应用
       NOTIFY_GROUP_URL: https://t.me/webhtv
       ASSET_INCLUDE: .apk
