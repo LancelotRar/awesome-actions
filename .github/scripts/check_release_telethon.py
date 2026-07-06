@@ -40,8 +40,8 @@ from notifier import notify, TelegramConfig
 
 REPO = os.environ["REPO"]
 DATA_FILE = os.environ["DATA_FILE"]
-NOTIFY_TITLE = os.environ["NOTIFY_TITLE"]
-NOTIFY_GROUP_URL = os.environ["NOTIFY_GROUP_URL"]
+NOTIFY_TITLE = os.environ.get("NOTIFY_TITLE", "")
+NOTIFY_GROUP_URL = os.environ.get("NOTIFY_GROUP_URL", "")
 NOTIFY_DESCRIPTION = os.environ.get("NOTIFY_DESCRIPTION", "")
 FORCE = os.environ.get("FORCE", "").lower() == "true"
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")

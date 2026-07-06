@@ -32,15 +32,17 @@ def _build_message(asset_name: str, pub_date: str, html_url: str,
                    description: str = "") -> str:
     """Build the HTML notification text."""
     name = escape(asset_name)
-    desc_line = f"📝{escape(description)}\n" if description else ""
-    return (
-        f"🚀<b>{title}</b>\n"
-        f"{desc_line}"
-        f'📢<a href="{group_url}">TG讨论群</a>\n'
-        f"🌀版本：<code>{name}</code>\n"
-        f"🍾发布时间：{pub_date}\n"
-        f'🔗<a href="{html_url}">查看完整Release日志</a>'
-    )
+    lines = []
+    if title:
+        lines.append(f"🚀<b>{title}</b>")
+    if description:
+        lines.append(f"📝{escape(description)}")
+    if group_url:
+        lines.append(f'📢<a href="{group_url}">TG讨论群</a>')
+    lines.append(f"🌀版本：<code>{name}</code>")
+    lines.append(f"🍾发布时间：{pub_date}")
+    lines.append(f'🔗<a href="{html_url}">查看完整Release日志</a>')
+    return "\n".join(lines)
 
 
 async def notify(release_data: dict, cfg: TelegramConfig,
