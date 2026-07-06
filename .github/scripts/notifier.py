@@ -24,14 +24,18 @@ class TelegramConfig:
     api_hash: str = ""
     notify_title: str = ""
     notify_group_url: str = ""
+    notify_description: str = ""
 
 
 def _build_message(asset_name: str, pub_date: str, html_url: str,
-                   title: str, group_url: str) -> str:
+                   title: str, group_url: str,
+                   description: str = "") -> str:
     """Build the HTML notification text."""
     name = escape(asset_name)
+    desc_line = f"📝{escape(description)}\n" if description else ""
     return (
         f"🚀<b>{title}新版本发布！</b>\n"
+        f"{desc_line}"
         f'📢<a href="{group_url}">TG讨论群</a>\n'
         f"🌀版本：<code>{name}</code>\n"
         f"🍾发布时间：{pub_date}\n"
@@ -56,7 +60,8 @@ async def notify(release_data: dict, cfg: TelegramConfig,
     pub_date = release_data["published_at"][:10]
     rel_url = release_data["html_url"]
     text = _build_message(asset_name, pub_date, rel_url,
-                          cfg.notify_title, cfg.notify_group_url)
+                          cfg.notify_title, cfg.notify_group_url,
+                          cfg.notify_description)
 
     # --- Telethon client ---
     # NOTE: Do NOT use ``async with TelegramClient(…)`` — its

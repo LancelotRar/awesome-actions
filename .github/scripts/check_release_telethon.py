@@ -7,6 +7,7 @@ Environment variables
 REPO                  GitHub repo (e.g. "fish2018/webhtv")
 DATA_FILE             Path to persist last release updated_at
 NOTIFY_TITLE          Display title for notification
+NOTIFY_DESCRIPTION    Short description shown below title (optional)
 NOTIFY_GROUP_URL      Telegram group invite URL
 GITHUB_TOKEN          GitHub token (optional, for API auth)
 TG_BOT_TOKEN          Telegram bot token (from @BotFather)
@@ -41,6 +42,7 @@ REPO = os.environ["REPO"]
 DATA_FILE = os.environ["DATA_FILE"]
 NOTIFY_TITLE = os.environ["NOTIFY_TITLE"]
 NOTIFY_GROUP_URL = os.environ["NOTIFY_GROUP_URL"]
+NOTIFY_DESCRIPTION = os.environ.get("NOTIFY_DESCRIPTION", "")
 FORCE = os.environ.get("FORCE", "").lower() == "true"
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 ASSET_INCLUDE = os.environ.get("ASSET_INCLUDE", "")
@@ -70,6 +72,7 @@ TG_CONFIG = TelegramConfig(
     api_hash=os.environ["TG_API_HASH"],
     notify_title=NOTIFY_TITLE,
     notify_group_url=NOTIFY_GROUP_URL,
+    notify_description=NOTIFY_DESCRIPTION,
 )
 
 # ---------------------------------------------------------------------------
