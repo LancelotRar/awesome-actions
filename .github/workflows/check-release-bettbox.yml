@@ -65,4 +65,5 @@ jobs:
           git add "${{ env.DATA_FILE }}"
           git diff --cached --quiet && echo "No changes to commit" && exit 0
           git commit -m "update last release data [skip ci]"
+          git pull --rebase
           git push
